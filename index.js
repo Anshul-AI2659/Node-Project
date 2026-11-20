@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
     gender:{
         type:String,
     }
-});
+},{timestamps:true});
 const User = mongoose.model("user",userSchema);
 
 
@@ -75,30 +75,61 @@ app.use((req,res,next)=>{
 // })
 
 // GET /api/users - List all the users JSON data.
-app.post("/api/users",(req,res)=>{
+app.post("/api/users",async(req,res)=>{
     const body = req.body;
     if(!body || !body.first_name || !body.last_name || !body.gender || !body.email || !body.job_title){
         return res.status(400).json({msg: "All fields are required"});
     }
-    users.push({...body,id:users.length+1});
-    fs.writeFile('./MOCK_DATA.json',JSON.stringify(users),(err,data)=>{
-        return res.json(users)
-    })
+    const result = await User.create(
+        {
+            firstName:body.first_name,
+            lastName:body.last_name,
+            email:body.email,
+            gender:body.gender,
+            jobTitle:body.job_title,
+        }
+    );
+    console.log(result);
+    return res.status(201).json({msg:"Success"})
+
+    // users.push({...body,id:users.length+1});
+    // fs.writeFile('./MOCK_DATA.json',JSON.stringify(users),(err,data)=>{
+    //     return res.json(users)
+    // })
 })
 
 // GET /users HTML Document Render.
-app.get("/users",(req,res)=>{
+app.get("/users",async(req,res)=>{
+    const alldbUsers = await User.find({})
     const html = `<ul>
-    ${users.map((user)=>`<li>${user.first_name}</li>`).join("")}
+    ${alldbUsers.map((user)=>`<li>${user.firstName} - ${user.email}</li>`).join("")}
     </ul>`;
     res.send(html);
 })
 
+app.get("/api/users", async(req,res)=>{
+    const alldbUsers = await User.find({})
+    return res.json(alldbUsers);
+})
+
 //GET /api/users/1 - Get the user with ID 1.
-app.get("/api/users/:id",(req,res)=>{
-    const id = Number(req.params.id);
-    const user = users.find((user)=>user.id ===id);
+app.get("/api/users/:id",async(req,res)=>{
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({error:"User Not Found"});
     return res.json(user)
+    // const id = Number(req.params.id);
+    // const user = users.find((user)=>user.id ===id);
+    // return res.json(user)
+})
+
+app.patch("/api/users/:id",async(req,res)=>{
+    await User.findByIdAndUpdate(req.params.id,{lastName:"Changed"})
+    return res.json({status:"Success"});
+})
+
+app.delete("/api/users/:id",async(req,res)=>{
+    await User.findByIdAndDelete(req.params.id);
+    return res.json({status:"Success"});
 })
  
 app.listen(PORT,()=>{
